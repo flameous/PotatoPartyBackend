@@ -73,6 +73,29 @@ func (ic *AllInterests) ToArray() []*Interests {
 	return is
 }
 
+func (ic *AllInterests) Validate() {
+	empty := make([]*Interests, 0)
+	if ic.Films == nil {
+		ic.Films = empty
+	}
+
+	if ic.Sport == nil {
+		ic.Sport = empty
+	}
+
+	if ic.Outdoor == nil {
+		ic.Outdoor = empty
+	}
+
+	if ic.Music == nil {
+		ic.Music = empty
+	}
+
+	if ic.IT == nil {
+		ic.IT = empty
+	}
+}
+
 func (ic *AllInterests) ToMapByID() map[int64]bool {
 	m := make(map[int64]bool)
 	for _, v := range ic.Sport {

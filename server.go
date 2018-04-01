@@ -16,15 +16,20 @@ import (
 // server holds config and gin server instance
 type server struct {
 	storage *db.Storage
+	wr      *websocketRoom
+	online  chan []int64
 }
 
 // NewServer creates server with taken config
 func NewServer() *server {
-	return &server{}
+	online := make(chan []int64, 100)
+	return &server{wr: newWebsocketRoom(online), online: online}
 }
 
 // Serve serves perfectly!
 func (s *server) Serve(exit chan bool) {
+	go s.createEventForOnlineUsers()
+
 	dbHost := os.Getenv("DB_HOST")
 	if dbHost != "localhost" {
 		gin.SetMode(gin.ReleaseMode)
@@ -67,6 +72,10 @@ func (s *server) Serve(exit chan bool) {
 
 	engine.POST("/auth", s.auth)
 	engine.Use(s.authenticateMiddleware)
+
+	engine.Any("/ws", func(c *gin.Context) {
+		s.wr.addClient(c.MustGet("user").(*types.User), c.Writer, c.Request)
+	})
 
 	user := engine.Group("/user")
 	user.GET("", s.getAllUsers)
@@ -211,6 +220,10 @@ func (s *server) createNewEvent(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, v := range event.Attendees {
+		s.wr.sendEventInvitationToClient(v.ID, &event)
+	}
 	c.IndentedJSON(200, id)
 }
 
@@ -261,4 +274,41 @@ func (s *server) validateOrAbort(c *gin.Context) {
 
 func (s *server) getAuthUserID(c *gin.Context) int64 {
 	return c.MustGet("user").(*types.User).ID
+}
+
+func (s *server) createEventForOnlineUsers() {
+	var online []int64
+	for {
+		online = <-s.online
+		if len(online) < 2 {
+			continue
+		}
+		//
+		//users := make([]*types.User, 0)
+		//for _, id := range online {
+		//	u, _ := s.storage.GetUserByID(id)
+		//	users = append(users, u)
+		//}
+		//
+		//interests := types.NewAllInterests()
+		//interests.IT = []*types.Interests{ {ID:22, Name: "Backend"}, {}}
+		//u, _ := s.storage.GetUserByNickname("Potato Party Bot")
+		//event := types.Event{
+		//	Owner: u,
+		//	Name:  "Автоматическая тусовка!",
+		//	Description: "Вы были выбраны искусственным интеллектом, чтобы устроить тусовку." +
+		//		" Наверное. Если не устроете, мы продадим ваши персональные данные :)",
+		//	IsPrivate: false,
+		//	Lat: 53.92667,
+		//	Lon: 27.682518,
+		//	Date: time.Now(),
+		//	Attendees: users,
+		//	Interests:
+		//}
+		//
+		//_, err := s.storage.CreateNewEvent(&event)
+		//if err != nil {
+		//	log.Println()
+		//}
+	}
 }

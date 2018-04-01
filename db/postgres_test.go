@@ -33,7 +33,7 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, userNotExist)
 
-	userValidToken, err := s.GetUserByToken("123")
+	userValidToken, err := s.GetUserByToken("nbvcx")
 	require.NoError(t, err)
 	require.NotNil(t, userValidToken)
 

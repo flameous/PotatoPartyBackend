@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/flameous/PotatoPartyBackend/types"
 	"log"
+	"math/rand"
 )
 
 type Storage struct {
@@ -19,7 +20,45 @@ func ConnectToDatabase(host string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Storage{db}, db.Ping()
+	s := &Storage{db}
+	s.randomizeData()
+	return s, db.Ping()
+}
+
+func (s *Storage) randomizeData() {
+	var needUpd bool
+	err := s.db.QueryRow(`SELECT is_updated FROM debug`).Scan(&needUpd)
+	log.Println(err)
+	if needUpd {
+		log.Println("db is ready")
+		return
+	}
+
+	var maxUserID int64
+	err = s.db.QueryRow(`SELECT max(id) FROM users`).Scan(&maxUserID)
+	log.Println(err, maxUserID)
+
+	var maxInterestsID int64
+	err = s.db.QueryRow(`SELECT max(id) FROM interests`).Scan(&maxInterestsID)
+	log.Println(err, maxInterestsID)
+
+	// add random users and interests to all events
+	var maxEventsID int64
+	err = s.db.QueryRow(`SELECT max(id) FROM events`).Scan(&maxEventsID)
+	log.Println(err, maxEventsID)
+
+	for eventID := int64(1); eventID <= maxEventsID; eventID++ {
+		for uid := int64(2); uid <= maxUserID-rand.Int63n(15); uid++ {
+			s.AttendToEvent(eventID, uid)
+		}
+
+		for uid := int64(0); uid < int64(1)+rand.Int63n(5); uid++ {
+			err = s.createEventInterests(eventID, rand.Int63n(maxInterestsID)+1)
+		}
+	}
+
+	_, err = s.db.Exec(`UPDATE debug SET is_updated = TRUE`)
+	log.Println(err)
 }
 
 func (s *Storage) UpsertUser(u *types.User) (int64, error) {
@@ -166,10 +205,7 @@ func (s *Storage) GetAllEvents(u *types.User) (*types.EventsList, error) {
 		if len(e.SameInterests) == 0 {
 			continue
 		}
-
-		log.Println("suggested!", e)
 		el.Suggested = append(el.Suggested, e)
-
 	}
 	return el, nil
 }
@@ -199,7 +235,7 @@ func (s *Storage) GetExtendedData(event *types.Event, uis map[int64]bool, uid in
 	}
 
 	// if event is NOT private and we haven't same interests, we'll drop it later
-	if len(same) == 0 && !event.IsPrivate {
+	if len(same) == 0 && !event.IsPrivate && event.Owner.ID != uid {
 		return nil
 	}
 
@@ -252,6 +288,8 @@ func (s *Storage) CreateNewEvent(event *types.Event) (int64, error) {
 		}
 	}
 
+	// fixme: to escape null vals in JSON
+	event.Interests.Validate()
 	for _, v := range event.Attendees {
 		if err = s.createEventAttendees(id, v.ID); err != nil {
 			return 0, errors.Wrap(err, "insert event's interests")

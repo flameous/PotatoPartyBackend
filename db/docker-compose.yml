@@ -1,0 +1,19 @@
+# if you want to only build database container
+
+version: "2.1"
+
+services:
+  test_database:
+    image: postgres:alpine
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    container_name: potato_db
+
+    ports:
+      - 5432:5432
+
+    environment:
+      - POSTGRES_USER=potato
+      - POSTGRES_PASSWORD=potato
+      - POSTGRES_DB=potato

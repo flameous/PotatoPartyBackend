@@ -1,0 +1,47 @@
+version: "2.1"
+
+
+services:
+  database:
+    image: postgres:alpine
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    container_name: potato_db
+
+    expose:
+      - 5432
+
+    ports:
+      - 7654:5432
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 30s
+      retries: 5
+
+    environment:
+      - POSTGRES_USER=potato
+      - POSTGRES_PASSWORD=potato
+      - POSTGRES_DB=potato
+
+
+  go:
+    container_name: potato_go
+    build: .
+    image: potatoapp
+    ports:
+      - 8080:8080
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+    links:
+      - "database:db"
+
+    environment:
+      - DB_HOST=db
+
+

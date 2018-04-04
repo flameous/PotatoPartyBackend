@@ -11,6 +11,8 @@ import (
 	"github.com/flameous/PotatoPartyBackend/types"
 	"strconv"
 	"encoding/json"
+	"time"
+	"fmt"
 )
 
 // server holds config and gin server instance
@@ -277,38 +279,42 @@ func (s *server) getAuthUserID(c *gin.Context) int64 {
 }
 
 func (s *server) createEventForOnlineUsers() {
+	var num int = 0
 	var online []int64
 	for {
 		online = <-s.online
 		if len(online) < 2 {
 			continue
 		}
-		//
-		//users := make([]*types.User, 0)
-		//for _, id := range online {
-		//	u, _ := s.storage.GetUserByID(id)
-		//	users = append(users, u)
-		//}
-		//
-		//interests := types.NewAllInterests()
-		//interests.IT = []*types.Interests{ {ID:22, Name: "Backend"}, {}}
-		//u, _ := s.storage.GetUserByNickname("Potato Party Bot")
-		//event := types.Event{
-		//	Owner: u,
-		//	Name:  "Автоматическая тусовка!",
-		//	Description: "Вы были выбраны искусственным интеллектом, чтобы устроить тусовку." +
-		//		" Наверное. Если не устроете, мы продадим ваши персональные данные :)",
-		//	IsPrivate: false,
-		//	Lat: 53.92667,
-		//	Lon: 27.682518,
-		//	Date: time.Now(),
-		//	Attendees: users,
-		//	Interests:
-		//}
-		//
-		//_, err := s.storage.CreateNewEvent(&event)
-		//if err != nil {
-		//	log.Println()
-		//}
+		num++
+
+		users := make([]*types.User, 0)
+		for _, id := range online {
+			u, _ := s.storage.GetUserByID(id)
+			users = append(users, u)
+		}
+
+		u, _ := s.storage.GetUserByNickname("Potato Party Bot")
+		event := types.Event{
+			Owner: u,
+			Name:  fmt.Sprintf("Автоматическая тусовка номер %d !", num),
+			Description: "Вы были выбраны высшим разумом, чтобы устроить тусовку." +
+				" Наверное. Если не устроете, мы продадим ваши персональные данные :)",
+			IsPrivate: false,
+			Lat:       53.92667,
+			Lon:       27.682518,
+			Date:      time.Now(),
+			Attendees: users,
+			Interests: s.storage.RandomAllInterests(),
+		}
+
+		_, err := s.storage.CreateNewEvent(&event)
+		if err != nil {
+			log.Println(err)
+		}
+
+		for _, v := range event.Attendees {
+			s.wr.sendEventInvitationToClient(v.ID, &event)
+		}
 	}
 }

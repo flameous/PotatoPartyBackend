@@ -290,6 +290,7 @@ func (s *Storage) CreateNewEvent(event *types.Event) (int64, error) {
 
 	// fixme: to escape null vals in JSON
 	event.Interests.Validate()
+	log.Println(event.Attendees)
 	for _, v := range event.Attendees {
 		if err = s.createEventAttendees(id, v.ID); err != nil {
 			return 0, errors.Wrap(err, "insert event's interests")
@@ -336,4 +337,20 @@ func (s *Storage) AttendToEvent(eventID, userID int64) error {
 func (s *Storage) RefuseAttendance(eventID, userID int64) error {
 	_, err := s.db.Exec(`DELETE FROM event_attendees WHERE event_id = $1 AND user_id = $2;`, eventID, userID)
 	return err
+}
+
+func (s *Storage) RandomAllInterests() *types.AllInterests {
+	var its []*types.Interests
+	rows, err := s.db.Query(`SELECT * FROM interests ORDER BY random() limit $1;`, 2-rand.Intn(5)+5)
+	if err != nil {
+		return nil
+	}
+	for rows.Next() {
+		var i types.Interests
+		if err = rows.Scan(&i.ID, &i.CategoryID, &i.Name); err != nil {
+			return nil
+		}
+		its = append(its, &i)
+	}
+	return types.Categorize(its)
 }

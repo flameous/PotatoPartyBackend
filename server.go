@@ -1,18 +1,18 @@
 package potato
 
 import (
-	"net/http"
-	"os"
-	"context"
-	"log"
-	"os/signal"
-	"github.com/gin-gonic/gin"
-	"github.com/flameous/PotatoPartyBackend/db"
-	"github.com/flameous/PotatoPartyBackend/types"
-	"strconv"
-	"encoding/json"
-	"time"
-	"fmt"
+"net/http"
+"os"
+"context"
+"log"
+"os/signal"
+"github.com/gin-gonic/gin"
+"github.com/flameous/PotatoPartyBackend/db"
+"github.com/flameous/PotatoPartyBackend/types"
+"strconv"
+"encoding/json"
+"time"
+"fmt"
 )
 
 // server holds config and gin server instance
